@@ -37,9 +37,13 @@ def search_wikimedia(query: str, count: int) -> list:
         "https://commons.wikimedia.org/w/api.php?"
         + urllib.parse.urlencode({
             "action": "query",
-            "list": "search",
-            "srsearch": query,
-            "srlimit": min(count, 50),
+            "generator": "search",
+            "gsrsearch": query,
+            "gsrnamespace": "6",
+            "gsrlimit": min(count, 50),
+            "prop": "imageinfo",
+            "iiprop": "url|extmetadata",
+            "iiurlwidth": "400",
             "format": "json",
             "origin": "*",
         })
@@ -49,23 +53,18 @@ def search_wikimedia(query: str, count: int) -> list:
         data = json.loads(resp.read())
 
     results = []
-    for page in data.get("query", {}).get("search", []):
-        title = page.get("title", "")
-        image_url = (
-            "https://commons.wikimedia.org/wiki/Special:FilePath/"
-            + urllib.parse.quote(title.replace(" ", "_"))
-            + "?width=800"
-        )
-        thumb_url = (
-            "https://commons.wikimedia.org/wiki/Special:FilePath/"
-            + urllib.parse.quote(title.replace(" ", "_"))
-            + "?width=300"
-        )
-        results.append({
-            "title": title,
-            "url": image_url,
-            "thumbnail": thumb_url,
-        })
+    pages = data.get("query", {}).get("pages", {})
+    for page_id in sorted(pages.keys()):
+        page = pages[page_id]
+        info = page.get("imageinfo", [{}])[0]
+        if info.get("url"):
+            results.append({
+                "title": page.get("title", "").replace("File:", ""),
+                "url": info["url"],
+                "thumbnail": info.get("thumburl", info["url"]),
+            })
+        if len(results) >= count:
+            break
     return results
 
 @app.get("/health")
