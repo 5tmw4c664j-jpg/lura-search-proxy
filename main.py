@@ -75,7 +75,7 @@ def health():
 async def search_images(req: SearchRequest):
     if not req.query:
         return {"success": False, "results": [], "error": "No query provided"}
-    
+
     # Try DuckDuckGo first
     try:
         results = []
